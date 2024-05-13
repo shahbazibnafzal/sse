@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   const intervalId = setInterval(() => {
     if (eventCount < 5) {
-      sendEvent({ message: `Streaming data...${eventCount}`, time: new Date().toISOString() });
+      sendEvent({ message: `Streaming data: ${eventCount}`, time: new Date().toISOString() });
       eventCount++;
     }
     else if (eventCount === 5) {
