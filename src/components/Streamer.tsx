@@ -12,7 +12,11 @@ const Streamer: React.FC = () => {
 
     eventSource.onmessage = (event) => {
       const newEvent = JSON.parse(event.data)
-      setData((prevData) => [...prevData, newEvent.message])
+      if (newEvent.message === 'Stream completed') {
+        eventSource.close()
+      } else {
+        setData((prevData) => [...prevData, newEvent.message])
+      }
     }
 
     eventSource.onerror = (err) => {
