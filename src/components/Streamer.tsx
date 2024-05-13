@@ -1,54 +1,41 @@
+// components/Streamer.tsx
+'use client'
+
 import React, { useState } from 'react'
 
-const Streamer = () => {
+const Streamer: React.FC = () => {
   const [data, setData] = useState<string[]>([])
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string>('')
 
-  const fetchDataStream = async () => {
-    try {
-      const response = await fetch('/api/chat', { cache: 'no-store' })
-      console.log('Response:', response)
-      const reader = response.body!.getReader()
-      const decoder = new TextDecoder()
+  const startStreaming = () => {
+    const eventSource = new EventSource('/api/chat')
 
-      const processStream = async () => {
-        let result
-        do {
-          result = await reader.read()
-          console.log('Result in do while loop:', result)
-          if (!result.done) {
-            const chunk = decoder.decode(result.value, { stream: true })
-            console.log('Chunk received:', chunk)
-            // Process JSON chunk if necessary, this assumes the server sends valid JSON per chunk
-            setData((prevData) => [...prevData, chunk])
-          }
-        } while (!result.done)
+    eventSource.onmessage = (event) => {
+      const newEvent = JSON.parse(event.data)
+      setData((prevData) => [...prevData, newEvent.message])
+    }
 
-        console.log('Stream completed')
-      }
-
-      processStream()
-    } catch (err) {
-      console.error('Fetch error:', err)
+    eventSource.onerror = (err) => {
+      console.error('EventSource failed:', err)
       setError('Failed to fetch data stream.')
+      eventSource.close()
     }
   }
 
   return (
     <div className='flex flex-col justify-center items-center gap-2'>
-      <h2 className='text-xl font-bold'>Data stream with fetch</h2>
+      <h2 className='text-xl font-bold'>Data stream with EventSource</h2>
       <button
-        onClick={() => fetchDataStream()}
+        onClick={startStreaming}
         className='bg-blue-800 text-white py-1 px-3 rounded-lg'
       >
         Start streaming
       </button>
       {error && <p>Error: {error}</p>}
       <ul className='flex flex-col justify-center items-center'>
-        {data &&
-          data.map((dataItem: string, index: number) => (
-            <li key={index}>{dataItem}</li>
-          ))}
+        {data.map((dataItem, index) => (
+          <li key={index}>{dataItem}</li>
+        ))}
       </ul>
     </div>
   )

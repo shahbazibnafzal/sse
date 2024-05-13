@@ -8,7 +8,6 @@ export default function Home() {
       <div>
         <h1 className='text-2xl font-bold my-2 text-center'>Streaming issue</h1>
         <Streamer />
-        <EventStreamer />
       </div>
     </main>
   )

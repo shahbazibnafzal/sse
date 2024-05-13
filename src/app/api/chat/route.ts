@@ -1,51 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+// app/api/stream/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 
+export const config = {
+  runtime: 'edge',
+};
 
-export async function GET(request:NextRequest, response:NextResponse) {
-    try {
-       console.log("Client connected for events");
-        // Set headers for SSE
-        const headers = new Headers({
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-transform',
-          'Content-Encoding': 'none',
-          'Connection': 'keep-alive',
+export async function GET(req: NextRequest) {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
 
-        });
-        let i = 0;
-    
-        // This function creates a ReadableStream that pushes an event every second
-        const stream = new ReadableStream({
-          start(controller) {
-            const pushEvent = () => {
-              const data = `data: ${JSON.stringify({ time: new Date().toISOString() })}\n\n`;
-              if (i < 5) {
-                controller.enqueue(new TextEncoder().encode(data));
-              }
-              if (i == 5){
-                clearInterval(intervalId);
-                controller.close();
-              }
-              i += 1
-              console.log("Event sent: " + data);
-            };
-    
-    
-            const intervalId = setInterval(pushEvent, 1000);
-    
-            // When the client closes connection, clean up
-            request.signal.addEventListener('abort', () => {
-              clearInterval(intervalId);
-              controller.close();
-              console.log("Client disconnected");
-            });
-          }
-        });
-    
-        return new NextResponse(stream, { headers });
-      } catch (error) {
-        console.log(`Error in setting up event stream`);
-        return new NextResponse("Failed to setup event stream", { status: 500 });
-      }
-    
+  const sendEvent = async (data: Record<string, any>) => {
+    writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+  };
+
+  sendEvent({ message: 'Stream started' });
+
+  const intervalId = setInterval(() => {
+    sendEvent({ message: 'Streaming data...', time: new Date().toISOString() });
+  }, 2000);
+
+  req.signal.addEventListener('abort', () => {
+    clearInterval(intervalId);
+    writer.close();
+  });
+
+  return new NextResponse(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Content-Encoding': 'none',
+    },
+  });
 }
