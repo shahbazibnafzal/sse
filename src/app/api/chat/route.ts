@@ -7,8 +7,10 @@ export async function GET(request:NextRequest, response:NextResponse) {
         // Set headers for SSE
         const headers = new Headers({
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
+          'Content-Encoding': 'none',
           'Connection': 'keep-alive',
+
         });
         let i = 0;
     
