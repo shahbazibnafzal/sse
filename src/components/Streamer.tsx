@@ -6,7 +6,7 @@ const Streamer = () => {
 
   const fetchDataStream = async () => {
     try {
-      const response = await fetch('/api/chat')
+      const response = await fetch('/api/chat', { cache: 'no-store' })
       console.log('Response:', response)
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
@@ -44,7 +44,7 @@ const Streamer = () => {
         Start streaming
       </button>
       {error && <p>Error: {error}</p>}
-      <ul>
+      <ul className='flex flex-col justify-center items-center'>
         {data &&
           data.map((dataItem: string, index: number) => (
             <li key={index}>{dataItem}</li>
