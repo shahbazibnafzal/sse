@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
   const encoder = new TextEncoder();
   let eventCount = 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sendEvent = async (data: Record<string, any>) => {
     writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
