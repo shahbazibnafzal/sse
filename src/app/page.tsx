@@ -1,5 +1,4 @@
 'use client'
-import EventStreamer from '@/components/EventStreamer'
 import Streamer from '@/components/Streamer'
 
 export default function Home() {

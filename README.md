@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# This is a Next.js demo application with a streaming UI
 
-## Getting Started
+Create a streaming UI similar to a generative AI application (example: ChatGPT)
+with event source in the frontend.
 
-First, run the development server:
+## Implementing API route for streaming data:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+    import { type NextRequest, NextResponse } from "next/server";
+
+    export const runtime = "edge";
+
+    export async function GET(req: NextRequest) {
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
+      const encoder = new TextEncoder();
+      let eventCount = 0;
+
+      const sendEvent = async (data: Record<string, any>) => {
+        writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      };
+
+      sendEvent({ message: "Stream started" });
+
+      const intervalId = setInterval(() => {
+        if (eventCount < 5) {
+          sendEvent({ message: `Streaming data: ${eventCount}`, time: new Date().toISOString() });
+          eventCount++;
+        }
+        else if (eventCount === 5) {
+            sendEvent({ message: `Stopping the stream now`, time: new Date().toISOString() });
+            eventCount++;
+          } 
+
+        else {
+          clearInterval(intervalId);
+          sendEvent({ message: "Stream completed" });
+          writer.close();
+        }
+      }, 2000);
+
+      req.signal.addEventListener("abort", () => {
+        clearInterval(intervalId);
+        writer.close();
+      });
+
+      return new NextResponse(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Content-Encoding": "none",
+        },
+      });
+    }
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Implementing a React component for streaming UI:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+    'use client'
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+    import React, { useState } from 'react'
 
-## Learn More
+    const Streamer: React.FC = () => {
+      const [data, setData] = useState<string[]>([])
+      const [error, setError] = useState<string>('')
 
-To learn more about Next.js, take a look at the following resources:
+      const startStreaming = () => {
+        const eventSource = new EventSource('/api/chat')
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+        eventSource.onmessage = (event) => {
+          const newEvent = JSON.parse(event.data)
+          if (newEvent.message === 'Stream completed') {
+            eventSource.close()
+          } else {
+            setData((prevData) => [...prevData, newEvent.message])
+          }
+        }
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+        eventSource.onerror = (err) => {
+          console.error('EventSource failed:', err)
+          setError('Failed to fetch data stream.')
+          eventSource.close()
+        }
+      }
 
-## Deploy on Vercel
+      return (
+        <div className='flex flex-col justify-center items-center gap-2'>
+          <h2 className='text-xl font-bold'>Data stream with EventSource</h2>
+          <button
+            onClick={startStreaming}
+            className='bg-blue-800 text-white py-1 px-3 rounded-lg'
+          >
+            Start streaming
+          </button>
+          {error && <p>Error: {error}</p>}
+          <ul className='flex flex-col justify-center items-center'>
+            {data.map((dataItem, index) => (
+              <li key={index}>{dataItem}</li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+    export default Streamer
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
